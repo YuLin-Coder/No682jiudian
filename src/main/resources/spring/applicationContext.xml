@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.1.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.1.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.1.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.1.xsd">
+
+	<!-- 配置文件上传 -->
+	<bean
+		class="org.springframework.web.multipart.commons.CommonsMultipartResolver"
+		id="multipartResolver">
+		<property name="defaultEncoding" value="utf-8"></property>
+		<property name="maxUploadSize" value="-1"></property>
+	</bean>
+	<!-- 文件上传异常 -->
+	<!-- <bean class="org.springframework.web.multipart.MaxUploadSizeExceededException"></bean> -->
+
+	<!-- JSON -->
+	<mvc:annotation-driven></mvc:annotation-driven>
+	<mvc:default-servlet-handler />
+
+	<!-- 配置M层 -->
+	<bean
+		class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter"></bean>
+	<!-- 配置V层 -->
+	<bean
+		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/views/"></property>
+		<property name="suffix" value=".jsp"></property>
+		<property name="viewClass"
+			value="org.springframework.web.servlet.view.JstlView"></property>
+	</bean>
+	<!-- 配置C层 -->
+	<context:annotation-config></context:annotation-config>
+	<context:component-scan base-package="com.java"></context:component-scan>
+
+	<!-- 加载db.properties文件中的内容，db.properties文件中key命名要有一定的特殊规则 -->
+	<context:property-placeholder
+		location="classpath*:db.properties" />
+
+	<!-- 配置数据源 ，dbcp -->
+	<bean id="dataSource"
+		class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="${jdbc.driver}" />
+		<property name="url" value="${jdbc.url}" />
+		<property name="username" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+		<property name="maxActive" value="30" />
+		<property name="maxIdle" value="5" />
+	</bean>
+
+
+	<!-- sqlSessionFactory -->
+	<bean id="sqlSessionFactory"
+		class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!-- 数据库连接池 -->
+		<property name="dataSource" ref="dataSource" />
+		<!-- 加载mybatis的全局配置文件 -->
+		<property name="configLocation"
+			value="classpath:mybatis/sqlMapConfig.xml" />
+		<!-- <property name="mapperLocations" value="classpath:com/java/mapping/*.xml"></property> -->
+		<property name="mapperLocations">
+			<array>
+				<value>classpath:com/java/mapping/*.xml</value>
+				<value>classpath:com/java/mapping/admin/*.xml</value>
+			</array>
+		</property>
+	</bean>
+
+	<!-- mapper扫描器 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<!-- 扫描包路径，如果需要扫描多个包，中间使用半角逗号隔开 -->
+		<property name="basePackage" value="com.java.mapper" />
+		<property name="sqlSessionFactoryBeanName"
+			value="sqlSessionFactory" />
+	</bean>
+
+
+	<!-- 配置事务 -->
+	<bean
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager"
+		id="transactionManager">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+
+	<tx:annotation-driven
+		transaction-manager="transactionManager" />
+
+	<!-- -->
+	<mvc:interceptors>
+		<!-- 后台访问拦截器 -->
+		<mvc:interceptor>
+			<mvc:mapping path="/admin/**" />
+			<mvc:mapping path="/system/*" />
+			<mvc:exclude-mapping path="/system/login" />
+			<mvc:exclude-mapping path="/system/get_cpacha" />
+			<mvc:exclude-mapping path="/resources/**" />
+			<bean
+				class="com.java.Interceptor.admin.LoginInterceptor"></bean>
+		</mvc:interceptor>
+		<!-- 前台访问拦截器 -->
+		<mvc:interceptor>
+			<mvc:mapping path="/home/account/**" />
+			<bean
+				class="com.java.Interceptor.LoginInterceptor"></bean>
+		</mvc:interceptor>
+	</mvc:interceptors>
+
+</beans>
